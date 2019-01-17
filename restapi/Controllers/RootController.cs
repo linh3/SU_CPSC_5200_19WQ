@@ -32,7 +32,7 @@ namespace restapi.Controllers
                             Type = ContentTypes.Timesheet,
                             Relationship = DocumentRelationship.CreateTimesheet,
                             Reference = "/timesheets"
-                        }   
+                        }
                     }
                 }
             };

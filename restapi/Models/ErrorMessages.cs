@@ -20,4 +20,10 @@ namespace restapi.Models
 
         public string Message { get => "No state transition of requested type present in timecard"; }
     }
+
+    public class ForbiddenActionError{
+        public int ErrorCode { get => 103;}
+        
+        public string Message { get => "Forbidden to review this timecard"; }
+    }
 }

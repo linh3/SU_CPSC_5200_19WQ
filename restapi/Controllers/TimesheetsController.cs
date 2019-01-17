@@ -53,9 +53,10 @@ namespace restapi.Controllers
             return timecard;
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("/Timesheets/{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError),409)]
         public IActionResult DeleteLine(string id)
         {
             Timecard timecard = Database.Find(id);
@@ -114,6 +115,7 @@ namespace restapi.Controllers
 
                 var annotatedLine = timecard.AddLine(timecardLine);
 
+
                 return Ok(annotatedLine);
             }
             else
@@ -123,16 +125,41 @@ namespace restapi.Controllers
         }
 
         [HttpPost("{timecardId}/lines/{lineId}")]
-        public IActionResult UpdateLine(string timecardId, string lineId, [FromBody] TimecardLine timecardLine)
+        [ProducesResponseType(typeof(AnnotatedTimecardLine), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult ReplaceLine(string timecardId, string lineId, [FromBody] TimecardLine timecardLine)
         {
             Timecard timecard = Database.Find(timecardId);
-
-            if (timecard == null)
+            if (timecard == null || timecard.IndexOf(lineId) == -1)
             {
                 return NotFound();
             }
+            else if(timecard.Status != TimecardStatus.Draft){
+                return StatusCode(409, new InvalidStateError() { });
+            }
 
-            return Ok();
+            var annotatedLine = timecard.ReplaceLine(timecardLine, lineId);
+            return Ok(annotatedLine);
+        }
+
+        [HttpPatch("{timecardId}/lines/{lineId}")]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(AnnotatedTimecardLine), 200)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult UpdateLine(string timecardId, string lineId, [FromBody] TimecardLine timecardLine)
+        {
+            Timecard timecard = Database.Find(timecardId);
+            if (timecard == null || timecard.IndexOf(lineId) == -1)
+            {
+                return NotFound();
+            }
+            else if(timecard.Status != TimecardStatus.Draft){
+                return StatusCode(409, new InvalidStateError() { });
+            }
+
+            var annotatedLine = timecard.UpdateLine(timecardLine, lineId);
+            return Ok(annotatedLine);
         }
 
         [HttpGet("{id}/transitions")]
@@ -338,6 +365,8 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(ForbiddenActionError), 403)]
+
         public IActionResult Approve(string id, [FromBody] Approval approval)
         {
             Timecard timecard = Database.Find(id);
@@ -347,6 +376,10 @@ namespace restapi.Controllers
                 if (timecard.Status != TimecardStatus.Submitted)
                 {
                     return StatusCode(409, new InvalidStateError() { });
+                }
+                else if(timecard.Resource == approval.Resource)
+                {
+                    return StatusCode(403, new ForbiddenActionError());
                 }
                 
                 var transition = new Transition(approval, TimecardStatus.Approved);

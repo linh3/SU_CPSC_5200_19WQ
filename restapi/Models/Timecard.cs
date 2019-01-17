@@ -84,7 +84,27 @@ namespace restapi.Models
                         Relationship = ActionRelationship.RecordLine,
                         Reference = $"/timesheets/{Identity.Value}/lines"
                     });
-                
+
+                    links.Add(new ActionLink() {
+                        Method = Method.Post,
+                        Type = ContentTypes.TimesheetLine,
+                        Relationship = ActionRelationship.Replace,
+                        Reference = $"/timesheets/{Identity.Value}/lines/" + "{lineId}"
+                    });
+
+                    links.Add(new ActionLink() {
+                        Method = Method.Patch,
+                        Type = ContentTypes.TimesheetLine,
+                        Relationship = ActionRelationship.Update,
+                        Reference = $"/timesheets/{Identity.Value}/lines/" + "{lineId}"
+                    });
+
+                    links.Add(new ActionLink() { 
+                            Method = Method.Delete,
+                            Type = ContentTypes.Timesheet,
+                            Relationship = ActionRelationship.DeleteTimeSheet,
+                            Reference = $"/timesheets/{Identity.Value}"
+                    });   
                     break;
 
                 case TimecardStatus.Submitted:
@@ -160,10 +180,44 @@ namespace restapi.Models
         public AnnotatedTimecardLine AddLine(TimecardLine timecardLine)
         {
             var annotatedLine = new AnnotatedTimecardLine(timecardLine);
-
             Lines.Add(annotatedLine);
-
             return annotatedLine;
         }
+        public AnnotatedTimecardLine ReplaceLine(TimecardLine timecardLine, string lineId)
+        {
+            var annotatedLine = new AnnotatedTimecardLine(timecardLine);
+            int index = IndexOf(lineId);
+            Lines.RemoveAt(index);
+            Lines.Insert(index, new AnnotatedTimecardLine(timecardLine));
+            return annotatedLine;
+        }
+
+        public AnnotatedTimecardLine UpdateLine(TimecardLine timecardLine, string lineId)
+        {
+            int index = IndexOf(lineId);
+
+            Lines[index].Week = timecardLine.Week;
+            Lines[index].Day = timecardLine.Day;
+            Lines[index].Year = timecardLine.Year;
+            Lines[index].Hours = timecardLine.Hours;
+            Lines[index].Project = timecardLine.Project;
+            return Lines[index];
+        }
+
+        public int IndexOf(string lineId)
+        {
+            Guid ID = new Guid(lineId);
+            int itemIndex = -1;
+            for (int i = 0; i < Lines.Count; i++)
+            {
+                if (Lines[i].UniqueIdentifier == ID)
+                {
+                    itemIndex = i;
+                    break;
+                }
+            }
+            return itemIndex;
+        }
+
     }
 }
